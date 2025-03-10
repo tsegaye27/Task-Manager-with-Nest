@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { User } from './users.model';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UsersService {
   private users: User[] = [];
 
-  getAllUsers(): User[] {
-    return this.users;
+  async findOne(email: string): Promise<User | undefined> {
+    return this.users.find((user) => user.email === email);
   }
 
   getUserById(id: string): User | undefined {
@@ -18,10 +19,11 @@ export class UsersService {
       id: Date.now().toString(),
       name,
       email,
-      password,
+      password: bcrypt.hashSync(password, 10),
     };
 
     this.users.push(user);
+    console.log('User created:', user);
     return user;
   }
 
