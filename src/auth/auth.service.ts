@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UsersService } from 'src/users/users.service';
+import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -20,6 +20,7 @@ export class AuthService {
     console.log('User not found or password mismatch');
     return null;
   }
+
   async login(user: any) {
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
