@@ -4,13 +4,17 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
   Post,
+  Patch,
   UseGuards,
+  Req,
+  UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { TasksService } from './tasks.service';
-import { Task } from './task.model';
 import { AuthGuard } from '@nestjs/passport';
+import { Request } from 'express';
+import { Task } from '@prisma/client';
 
 @Controller('tasks')
 @UseGuards(AuthGuard('jwt'))
@@ -18,33 +22,49 @@ export class TasksController {
   constructor(private tasksService: TasksService) {}
 
   @Get()
-  getAllTasks() {
-    return this.tasksService.getAllTasks();
+  async getAllTasks(@Req() req: Request): Promise<Task[]> {
+    const userId = req.user?.['sub'];
+    if (!userId) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+    return this.tasksService.getAllTasks(userId);
   }
 
   @Get(':id')
-  getTaskById(@Param('id') id: string): Task | undefined {
-    return this.tasksService.getTaskById(id);
+  async getTaskById(@Param('id') id: string): Promise<Task> {
+    const taskId = parseInt(id, 10);
+    const task = await this.tasksService.getTaskById(taskId);
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+    return task;
   }
 
   @Post()
-  createTask(
+  async createTask(
     @Body('title') title: string,
     @Body('description') description: string,
-  ): Task {
-    return this.tasksService.createTask(title, description);
+    @Req() req: Request,
+  ): Promise<Task> {
+    const userId = req.user?.['sub'];
+    if (!userId) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+    return this.tasksService.createTask(title, description, userId);
   }
 
   @Patch(':id/status')
-  updateTaskStatus(
+  async updateTaskStatus(
     @Param('id') id: string,
     @Body('status') status: 'OPEN' | 'IN_PROGRESS' | 'DONE',
-  ): Task | undefined {
-    return this.tasksService.updateTaskStatus(id, status);
+  ): Promise<Task> {
+    const taskId = parseInt(id, 10);
+    return this.tasksService.updateTaskStatus(taskId, status);
   }
 
   @Delete(':id')
-  deleteTask(@Param('id') id: string): void {
-    this.tasksService.deleteTask(id);
+  async deleteTask(@Param('id') id: string): Promise<void> {
+    const taskId = parseInt(id, 10);
+    return this.tasksService.deleteTask(taskId);
   }
 }

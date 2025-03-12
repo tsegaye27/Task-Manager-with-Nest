@@ -1,42 +1,49 @@
-import { Injectable } from '@nestjs/common';
-import { Task } from './task.model';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../prisma/prisma.service';
+import { Task } from '@prisma/client';
 
 @Injectable()
 export class TasksService {
-  private tasks: Task[] = [];
+  constructor(private prisma: PrismaService) {}
 
-  getAllTasks(): Task[] {
-    return this.tasks;
+  async getAllTasks(userId: number): Promise<Task[]> {
+    return this.prisma.task.findMany({ where: { userId } });
   }
 
-  getTaskById(id: string): Task | undefined {
-    return this.tasks.find((task) => task.id === id);
-  }
-
-  createTask(title: string, description: string): Task {
-    const task: Task = {
-      id: Date.now().toString(),
-      title,
-      description,
-      status: 'OPEN',
-    };
-
-    this.tasks.push(task);
-    return task;
-  }
-
-  updateTaskStatus(
-    id: string,
-    status: 'OPEN' | 'IN_PROGRESS' | 'DONE',
-  ): Task | undefined {
-    const task = this.getTaskById(id);
-    if (task) {
-      task.status = status;
+  async getTaskById(id: number): Promise<Task | null> {
+    const task = await this.prisma.task.findUnique({ where: { id } });
+    if (!task) {
+      throw new NotFoundException('Task not found');
     }
     return task;
   }
 
-  deleteTask(id: string): void {
-    this.tasks = this.tasks.filter((task) => task.id !== id);
+  async createTask(
+    title: string,
+    description: string,
+    userId: number,
+  ): Promise<Task> {
+    return this.prisma.task.create({
+      data: {
+        title,
+        description,
+        status: 'OPEN',
+        userId,
+      },
+    });
+  }
+
+  async updateTaskStatus(
+    id: number,
+    status: 'OPEN' | 'IN_PROGRESS' | 'DONE',
+  ): Promise<Task> {
+    return this.prisma.task.update({
+      where: { id },
+      data: { status },
+    });
+  }
+
+  async deleteTask(id: number): Promise<void> {
+    await this.prisma.task.delete({ where: { id } });
   }
 }
